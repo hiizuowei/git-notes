@@ -1,0 +1,313 @@
+
+/*
+ *git 相关的command
+ */
+$ which -a git
+
+$ vim .bashrc
+  --->export PATH=/usr/local/git/bin:$PATH
+  --->保证系统优先使用这个环境下的git
+
+$ source .bashrc
+
+
+$ git --version
+
+//git 自动完成
+
+
+$ git config --global user.name hiizuowei
+$ git config --global user.email hiizuowei@gmail.com
+
+//查看文档
+$ git config --help
+$ git help config
+$ man git-config
+
+//增加,可以是多个相同的key
+$ git config --global --add user.name eoe
+
+//查看
+$ git config user.name
+$ git config --get user.name
+
+//list
+$ git config --global --list
+
+//删
+$ git config --global --unset user.name
+or
+$ git config --global --unset user.name eoe //有多个相同的key时用这个
+
+//修改
+$ git config --global user.name eoe
+$ git config --global user.name hiizuowei
+
+
+//alias
+
+$ git config --global alias.co checkout
+$ git config --global alias.br branch
+$ git config --global alias.st status
+$ git config --global alias.ci commit
+
+$ git c-->>tab key
+
+$ git log
+
+
+-----@@@@@@@@@@@@@@@@@@@@@@@@@@@-------------------
+
+Git基本的工作流程
+
+它是如何存储文件?
+它是如何存储记录?
+
+Git使用40个16进制字符的SHA-1 Hash来唯一标识对象
+
+Git有四种对象
+1、blob --->>如文本文件，二进制文件，链接文件
+2、tree --->>目录
+3、commit --->>历史提交
+4、tag --->>指向一个固定的历史提交
+
+关系
+   指向                  |-->tree
+tag---->commit--->tree--->
+			 |-->blob
+
+
+commit指向的这么一个树形结构---》》就代表你提交的时候工作区的这么一个状态
+
+对这些内容进行SHA-1 Hash之后就会得到它的唯一标识
+
+
+Git 只关心文件的内容
+如果两个文件有相同的内容，它们会指向同一个blob对象，而文件名及其它信息会存储在
+tree对象里面
+
+有了这些对象之后，我们就需要有仓库去存储它来进行操作
+
+
+如何获取一个仓库？
+1.git init
+2.git clone
+
+
+git仓有两种
+
+一种是称之为裸仓库,不带工作区，通常放在服务器上方便其它用户进行协作
+------------------
+创建裸仓库
+git init --bare git_bare_repo
+ling:git_bare_repo (BARE:master)$ 
+------------------
+clone 裸仓库
+ling:git$ git clone git_bare_repo/ git_clone_repo
+------------------
+
+
+git 仓库有三个区域
+1.工作区--->>日常编辑代码的地方，维护着一个树形结构。
+2.历史仓库--->>commit指向的树形结构
+
+它们两者之间的区域--->>暂存区？
+相当于工作区与历史仓库之间缓存
+它代表的是你需要提交的一个工作状态
+它维护的是一个虚拟树结构
+
+
+Git的工作就是围绕这三个区域进行～～
+
+
+working                     staging                 history
+directory                    area                  respository
+  |                           |                         |
+  |                 checkout the project                |
+  |                           |                         |
+  |                           |                         |
+  |                           |                         |
+  |    stage files            |                         |
+  |                           |                         |
+  |                           |         commit          |
+  |                           |                         |
+  |                           |                         |
+  |                           |                         |
+   
+
+如：
+我们从工作区添加文件到暂存区～～
+然后把暂存区这个整体的状态提交的历史记录里面～～
+我们还可以从历史记录里面拣出文件到暂存区与工作区间～～
+
+大部分时间都是往暂存区里添加东西，然后再把暂存区里的东西提交历史里面
+对应的就是
+1.git add
+2.git commit
+如何查看工作区与暂存区的区别？
+3.git status
+如何从暂存区删掉不需要的东西？
+(工作区和暂存区里面里面的文件都会被干掉)
+4.git rm
+有时候我们需要在工作区中重命名文件或者移动文件，然后再把它们添加到暂存区里面去
+5.git mv
+确保工作区中的一些文件不被添加到staging area 与 history repository
+6.gitignore
+
+e.g--->>
+$ git init git_basics
+
+$ cd  git_basics/
+
+$ touch a
+
+$ touch b
+
+$ git add .
+
+$ git status
+
+$ git commit -m "Initail commit"
+
+$ vim a
+
+$ git status
+
+$ git add a
+
+$ git status
+
+$ git commit -m "modify a"
+
+$ gir rm a //working directory and staging area's files will be detete
+
+
+//只干掉暂存区的
+$ git rm --cached a
+
+$ git status
+---->>会提示 Untracked files--->a
+
+ling:git_basics (master +)$ git add a
+ling:git_basics (master)$ git status
+位于分支 master
+无文件要提交，干净的工作区
+
+
+$ git mv a c //实质上是一些操作的组合
+//在工作区中帮你把文件重命名或者移动
+//在暂存区中把原有的文件名干掉了
+//然后在把新的文件添加进暂存区
+
+
+$ git add -A
+or 
+$ git add .
+//将整个working directory add to staging area.
+
+
+//想要避免一些文件不要添加到历史记录里面
+$ vim .gitignore
+
+-->>*.[oa]
+    *~
+    *.pyc
+    !test.pyc --->告诉git igonre (*.pyc)文件时，这个文件test.pyc不要 igonre 掉
+    \!test.py --->>让git管理这个本身以！开头的文件，前面要加一个反斜杠
+    foo/ --->>以斜杠结尾表明匹配的是一个目录(foo文件是命中不了的)
+    ××/res --->>星星斜杠代表匹配0个或者多个目录（顶层的res可以命中，子目录的res也可命中）
+    build/
+    Documentation/
+    src/
+    .DS_Store
+
+   
+//根据项目需要编写.gitignore文件
+$ vim .gitignore
+$ git add .gitignore
+$ git commit -m "add ignore"
+
+
+
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+Git 暂存区的部分原理
+
+
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+1.git branch //创建分支
+
+2.git tag  //给固定commit做标记
+
+3.git chekout //切换分支
+
+4.git stash //切换分支之前，保存本地修改
+
+5.git merge //怎样合并分支
+
+
+e.g
+-------------------
+第一个历史提交
+ling:git_chekcout_merge (master #)$ vim master.txt
+ling:git_chekcout_merge (master #)$ git add .
+ling:git_chekcout_merge (master #)$ git commit -m "Initial commit on master"
+-------------------
+第二个历史提交
+ling:git_chekcout_merge (master)$ vim master.txt
+ling:git_chekcout_merge (master *)$ git add .
+ling:git_chekcout_merge (master +)$ git commit -m "Second commit on master"
+-------------------
+开始新的模块开发，创建一个新的分支
+ling:git_chekcout_merge (master)$ git branch test
+//切换到新的分支
+ling:git_chekcout_merge (master)$ git checkout test 
+//开始新的工作
+ling:git_chekcout_merge (test)$ vim master.txt 
+ling:git_chekcout_merge (test *)$ touch  test.txt
+ling:git_chekcout_merge (test *)$ git add .
+//test分支第一次历史提交
+ling:git_chekcout_merge (test +)$ git commit -m "Initial commit on test"
+------------------
+回到master分支工作
+//切换分支实际上是用当前分支的最新提交来还原我们工作区与暂存区
+ling:git_chekcout_merge (test)$ git checkout master
+
+
+/×
+    1.分支名是我们当前最新提交的一个引用
+    2.分支没提交一次就会指向这个最新的提交
+    3.如何让一个引用指向一个固定的提交(如版本released）？
+    (为了当某一个released出问题的时候可以轻松回去修改)
+×/
+OK------------tag 出马-------------
+tag分两种 
+1.轻量级的，它只是你本地一个引用
+2.带注解的，实质上是git tag 对象存储在git仓库里面，需要的时候可以push到服务器进行共享
+
+
+-------------------e.g.---------------
+//看一下提交情况
+(master)$ git log  --oneline --decorate --graph --all
+* 4cd6e16 (test) Initial commit on test
+* b41e34e (HEAD -> master) Second commit on master
+* 8f9ba6b Initial commit on master
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
