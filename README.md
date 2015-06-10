@@ -1,2 +1,2 @@
 # git-notes
-This repository is a use save some notes about git.
+This repository is used to saving some notes of git.
