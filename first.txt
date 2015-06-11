@@ -277,7 +277,7 @@ ling:git_chekcout_merge (test)$ git checkout master
 
 
 /×
-    1.分支名是我们当前最新提交的一个引用
+    1.分支名是我们当前最新提交的commit一个引用
     2.分支没提交一次就会指向这个最新的提交
     3.如何让一个引用指向一个固定的提交(如版本released）？
     (为了当某一个released出问题的时候可以轻松回去修改)
@@ -287,13 +287,88 @@ tag分两种
 1.轻量级的，它只是你本地一个引用
 2.带注解的，实质上是git tag 对象存储在git仓库里面，需要的时候可以push到服务器进行共享
 
-
 -------------------e.g.---------------
 //看一下提交情况
 (master)$ git log  --oneline --decorate --graph --all
 * 4cd6e16 (test) Initial commit on test
 * b41e34e (HEAD -> master) Second commit on master
 * 8f9ba6b Initial commit on master
+
+--->做一个轻量的版本提交
+ling:git_chekcout_merge (master)$ git tag "v0" b41e34e
+--->做一个带注解的版本提交
+ling:git_chekcout_merge (master)$ git tag -a "INITIAL_COMMIT" b41e34e
+--->当前有哪一些tag
+ling:git_chekcout_merge (master)$ git tag
+INITIAL_COMMIT
+v0
+--->直接看一下某个轻量级的tag
+ling:git_chekcout_merge (master)$ git show v0 
+commit 8f9ba6b45af3cfc844b2329a73272d8e9372eb1f
+……
+====>>>发现它直接指向到某一个commit
+
+--->看一带注解的tag
+ling:git_chekcout_merge (master)$ git show INITIAL_COMMIT 
+tag INITIAL_COMMIT
+Tagger: hiizuowei <hiizuowei@gmail.com>
+Date:   Fri Jun 12 00:11:53 2015 +0800
+
+TAG FOR INITIAL_COMMIT
+
+commit 8f9ba6b45af3cfc844b2329a73272d8e9372eb1f
+……
+====>>>发现它实际上是一个tag对象，然后指向了commit
+
+----------------------------------------------
+当我们需要回到这些tag的时候，我们可以用git checkout
+如：git checkout v0--->>它们实际上也是指向了一个提交
+ling:git_chekcout_merge (master)$ git checkout v0 
+Note: checking out 'v0'.
+
+You are in 'detached HEAD' state.……
+===>>>我们现在处于一种 'detached HEAD'的状态,也就是说head的引用
+      直接指向了一个commit而不是一个分支名，这样的话我们在这个commit
+      后面进行工作，切换到其它分支的时候，这部分历史将会丢弃掉
+
+那我们该如何做？
+用————>>>  git checkout -b <new-branch-name>//实质上是git branch 与 git checkout 的组合命令
+去做，以当前的v0所指向的commit为基础创建一个分支``
+ling:git_chekcout_merge ((INITIAL_COMMIT))$ git checkout -b fix_v0
+切换到一个新分支 'fix_v0'
+-----OK--->>现在可以修复v0这个tag了--->>>
+
+-->>改完之后添加到暂存区，然后切换到其它分支时出现
+error: Your local changes to the following files would be overwritten by checkout:
+	master.txt
+Please, commit your changes or stash them before you can switch branches.
+Aborting
+---->>说的是你本地的一些修改还没有被提交，chekcout的时候就会把你本地的一些修改给覆盖掉
+---->>那么它要求你提交这些修改或者stash起来
+
+---->>在这儿我们想把暂存区给 stash 起来                -------stash1 为一些stash信息
+ling:git_chekcout_merge (fix_v0 +)$ git stash save -a "stash1"
+Saved working directory and index state On fix_v0: stash1 //告诉我们stash好了
+HEAD 现在位于 8f9ba6b Initial commit on master//回到现前的state
+
+//此时我们的working directory clean
+ling:git_chekcout_merge (fix_v0)$ git status
+位于分支 fix_v0
+无文件要提交，干净的工作区
+
+
+----->>现在可以开心切换到其它分支了～～～～9:52
+ling:git_chekcout_merge (fix_v0)$ git checkout master 
+切换到分支 'master'
+
+
+
+
+
+
+
+
+
 
 
 
