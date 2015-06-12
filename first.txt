@@ -360,6 +360,155 @@ ling:git_chekcout_merge (fix_v0)$ git status
 ----->>现在可以开心切换到其它分支了～～～～9:52
 ling:git_chekcout_merge (fix_v0)$ git checkout master 
 切换到分支 'master'
+--->>>master工作完成了，回到之前分支工作
+ling:git_chekcout_merge (master)$ git checkout fix_v0
+--->>>这下要还原我们之前stash的东西～～
+--->>>首先看一下我们的stash list都有啥
+ling:git_chekcout_merge (fix_v0)$ git stash list 
+stash@{0}: On fix_v0: stash1
+--->>>OK 此时还原一下
+ling:git_chekcout_merge (fix_v0)$ git stash pop --index stash@{0}
+位于分支 fix_v0
+要提交的变更：
+  （使用 "git reset HEAD <文件>..." 撤出暂存区）
+
+	修改：     master.txt
+
+丢弃了 stash@{0} (f22896c20888c3f6bc3aaa7d814d965c698c7506)
+
+//让git还原stash的时候不要丢掉我们的stash
+ling:git_chekcout_merge (fix_v0)$ git stash apply --index stash@{0}
+位于分支 fix_v0
+要提交的变更：
+  （使用 "git reset HEAD <文件>..." 撤出暂存区）
+
+	修改：     master.txt
+
+//单纯的清除掉stash
+ling:git_chekcout_merge (fix_v0 +)$ git stash drop stash@{0}
+
+//清理所有的stash
+ling:git_chekcout_merge (fix_v0 +)$ git stash clear 
+
+/*
+	有了分支的工作
+	某个时间点就需要把它合并到我们想要的分支
+	不然分支的意义就不大了
+*/
+-->>ok,现在切换回master分支，并创建一个test_merge分支
+ling:git_chekcout_merge (fix_v0 +)$ git stash save
+ling:git_chekcout_merge (fix_v0)$ git checkout master 
+切换到分支 'master'
+ling:git_chekcout_merge (master)$ git checkout -b test_merge
+//做一些操作并添加到历史记录里面
+ling:git_chekcout_merge (test_merge)$ vim master.txt 
+ling:git_chekcout_merge (test_merge *)$ git add .
+ling:git_chekcout_merge (test_merge +)$ git commit -m "Initial commit on test_merge"
+
+//看一下树状结构
+ling:git_chekcout_merge (test_merge)$ git lol
+* fa41a94 (HEAD -> test_merge) Initial commit on test_merge
+| *   bc02fdc (refs/stash) WIP on fix_v0: 8f9ba6b Initial commit on master
+| |\  
+| | * 193e0d9 index on fix_v0: 8f9ba6b Initial commit on master
+| |/  
+| | * 4cd6e16 (test) Initial commit on test
+| |/  
+|/|   
+* | b41e34e (master) Second commit on master
+|/  
+* 8f9ba6b (tag: v0, tag: INITIAL_COMMIT, fix_v0) Initial commit on master
+
+/×
+	把test_merge上的操作merge到master分支上
+×/
+ling:git_chekcout_merge (test_merge)$ git checkout master 
+
+ling:git_chekcout_merge (master)$ git merge test_merge 
+更新 b41e34e..fa41a94
+Fast-forward
+ master.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+/×
+	Fast-forward 的 merge
+	表明要merge的分支是当前分支所衍生出来的
+	这时候我们只需要把我们工作区和暂存区恢复成要merge的分支,然后
+	把当前分支指向它即可，无需创建一个新的commit来合并
+×/
+看一下树状结构
+* fa41a94 (HEAD -> master, test_merge) Initial commit on test_merge
+| *   bc02fdc (refs/stash) WIP on fix_v0: 8f9ba6b Initial commit on master
+| |\  
+| | * 193e0d9 index on fix_v0: 8f9ba6b Initial commit on master
+| |/  
+| | * 4cd6e16 (test) Initial commit on test
+| |/  
+|/|   
+* | b41e34e Second commit on master
+|/  
+* 8f9ba6b (tag: v0, tag: INITIAL_COMMIT, fix_v0) Initial commit on master
+
+--->>现在我们在master分支上又要合并我们的test分支,会出现啥子装况了～～
+ling:git_chekcout_merge (master)$ git merge test
+自动合并 master.txt
+冲突（内容）：合并冲突于 master.txt
+自动合并失败，修正冲突然后提交修正的结果。
+//报错了～～
+//因为我们在test和test_merge分支上相同的地方修改了同样的内容
+
+--->>如果想放弃掉这次的提交，可以这样做～～
+ling:git_chekcout_merge (master *+|MERGING)$ git merge --abort
+
+--->>继续合并的话，可以编辑这个冲突的文件
+ling:git_chekcout_merge (master *+|MERGING)$ vim master.txt 
+Initial commit on master
+Second commit on master
+<<<<<<< HEAD
+Initial commit on test_merge    
+=======
+Initial commit on test
+>>>>>>> test
+
+/×
+	<<<<<<< HEAD
+	当前我们分支上的内容
+	=======
+	test分支上的内容
+	>>>>>>> test
+×/
+
+---->>此时我们可以干掉我们不想要的东西
+/×
+     修改完成之后保存并执行
+     ling:git_chekcout_merge (master *+|MERGING)$ vim master.txt 
+     ling:git_chekcout_merge (master *+|MERGING)$ git add master.txt 
+     ling:git_chekcout_merge (master +|MERGING)$ git commit 
+     [master 9ad3dbe] Merge branch 'test'
+
+     ---->>与刚才不同的是，它新加了一个commit来承载merge的信息
+×/
+
+
+/×Review×/
+1.所谓分支就是一个commit的引用
+2.在这些分支上工作会产生各自的历史
+3.所谓分支切换实际上是HEAD引用的移动，以及暂存区与工作区还原
+4.tag指向一个固定的引用，分两种，一种是轻量级的，一种是带注解的
+5.带注解的的是一个tag的对象
+6.git branch test产生分支的时候，它的分支并没有切换
+7.用git checkout test才会切换到这个分支
+8.merge分两种，一种是fast-farword merge,一种是non-fast-farword merge(三方合并)
+
+
+
+
+
+
+
+
+
+
 
 
 
