@@ -500,12 +500,266 @@ Initial commit on test
 7.用git checkout test才会切换到这个分支
 8.merge分两种，一种是fast-farword merge,一种是non-fast-farword merge(三方合并)
 
+--------------@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@22==================
+//查看和对比历史记录
+1.git show
+2.git log
+3.git diff
+
+/*
+--------------------------------------
+*   9ad3dbe (HEAD -> master) Merge branch 'test'
+|\  
+| * 4cd6e16 (test) Initial commit on test
+* | fa41a94 (test_merge) Initial commit on test_merge
+|/  
+* b41e34e Second commit on master
+| *   bc02fdc (refs/stash) WIP on fix_v0: 8f9ba6b Initial commit on master
+| |\  
+|/ /  
+| * 193e0d9 index on fix_v0: 8f9ba6b Initial commit on master
+|/  
+* 8f9ba6b (tag: v0, tag: INITIAL_COMMIT, fix_v0) Initial commit on master
+------------------------------------------------------------------
+	git show 可以接受git的一个对象作为参数
+	因此可以使用
+	ling:git_chekcout_merge (master)$ git show 9ad3dbe
+	ling:git_chekcout_merge (master)$ git show master//和上面是等价的
+	ling:git_chekcout_merge (master)$ git show HEAD  //和上面是等价的
+	commit 9ad3dbe81a7234da98bccd0dd7fd0c73a85329ef
+	Merge: fa41a94 4cd6e16
+	     第一附提交 第二附提交
+ 	Author: hiizuowei <hiizuowei@gmail.com>
+	Date:   Sat Jun 13 00:30:04 2015 +0800
+
+	    Merge branch 'test'
+	-------------------------------------------------
+	$ git show master^--->>指向的是master当前commit的第一附提交
+	还可使用$ git show master~
+	要查看第二附提交
+	$ git show master^2
+	
+	ling:git_chekcout_merge (master)$ git show --oneline master^2
+	--->>在这里能看到与它的父提交的一个差异
+	
+	---->>能看到一些统计信息
+	ling:git_chekcout_merge (master)$ git show --stat master^2
+
+	---->>组合起来这些参数
+	ling:git_chekcout_merge (master)$ git show --oneline --stat master^2
+	4cd6e16 Initial commit on test
+	 master.txt | 1 +
+	 test.txt   | 0
+	 2 files changed, 1 insertion(+)
+	
+	--->>show一下实际的tag对象
+	ling:git_chekcout_merge (master)$ git show INITIAL_COMMIT 
+	
+	--->> 格式化看一下commit所指向的tree对象
+	ling:git_chekcout_merge (master)$ git show --format=%T master^2
+	67f1806bf41f316ba403cdfb48449cad1d2a55d3
+
+	diff --git a/master.txt b/master.txt
+	index 69bd07b..151abd4 100644
+	     ------------------
+	      blob对象  blob对象
+---------------------------------------------
+	--->>看一下这个tree对象
+	ling:git_chekcout_merge (master)$ git show 67f180
+	tree 67f180
+
+	master.txt
+	test.txt
+	------>>这个tree对象里面有两个文件
+	
+	------>>>此时我们来看一下blob对象中的内容
+	$ git show 69bd07b
+	$ git show 151abd4
+
+*/
+
+------>>显示完整的commit信息
+$ git log
+//空格，f向下翻页
+//b向上翻页，上下键单行的移动，按q退出
+
+----->>
+$git log -p //来输出每一个commit之间差异信息
+
+ling:git_chekcout_merge (master)$ git log --stat
+//来输出每一个commit之间差异的统计信息
+
+$git log --oneline //来输出单行的一些信息
+
+//组合参数
+$ git log --oneline --stat //单行简短的与差异统计信息
+//
+$ git log --oneline --decorate --graph --all//
+
+/*
+	--decorate:表明一些commit引用的信息
+	--graph:表明图形化的一些历史信息
+	--all:表是输出所有分支的信息
+	
+*/
+/×
+	git log is a powerful tool.
+	1.了解到git的历史信息是怎么存储的?
+	2. 历史是怎样变话的？
+	3. 每个历史之间它们都有怎样的差异？
+	
+×/
+
+
+
+``````````````git diff--------------------
+
+这个工具来让我们来比较差异～～
+
+ling:git_chekcout_merge (master)$ git diff
+//直接git diff 表示工作区与暂存区的一个差异
+
+如何查看我们的暂存区与历史记录之间的一个差别了？
+我们可以输入git diff --cached
+
+如何查看工作区与其它历史提交的一个差异？
+还可以指定这些差异中特定文件的差异
+ling:git_chekcout_merge (master +)$ git diff HEAD~2 -- master.txt
+
+
+如何查看暂存区与其它历史提交的一个差异？
+ling:git_chekcout_merge (master +)$ git diff --cached HEAD~2
+
+如何看两个commit之间的差异呢？
+如：看当前commit与前两个commit之间的一个差异？
+ling:git_chekcout_merge (master +)$ git diff HEAD HEAD~2
+--->>某个文件的具体差异
+ling:git_chekcout_merge (master +)$ git diff HEAD HEAD~2 -- master.txt
+
+-->>不想看整一行的差异，只想看某个单词的
+ling:git_chekcout_merge (master *+)$ git diff --color-words
+ling:git_chekcout_merge (master *+)$ git diff --word-diff
+
+
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@撤消修改
+1.git checkout
+/*
+	1.创建，切换分支
+	2.还原我们的工作区
+*/
+2.git reset
+/×
+	1.还原我们暂存区
+	
+×/
+3.git clean
+/×
+	对于一些还没有添加进暂存区的文件
+	也就是git 还没有跟踪的文件
+	可以用git clean来清除它们
+×/
+4.git revert
+/×
+	产生一个新的提交来覆盖之前的提交所产生的修改
+×/
 
 
 
 
+-------------------------------
+修改一下master.txt
+-------------------------------
+/*看一下工作区与暂存区的差异*/
+ling:git_undo (master *)$ git diff
+/×看一下当前的一个状态×/
+ling:git_undo (master *)$ git status
+/*撤消工作区的这次修改*/
+ling:git_undo (master *)$ git checkout -- master.txt
+---->>实质上就是用暂存区的文件来覆盖工作区的文件
 
 
+/×弄一下暂存区丢弃×/
+ling:git_undo (master)$ vim master.txt 
+ling:git_undo (master *)$ git add master.txt 
+ling:git_undo (master +)$ git status
+位于分支 master
+要提交的变更：
+  （使用 "git reset HEAD <文件>..." 撤出暂存区）
+
+	修改：     master.txt
+
+ling:git_undo (master +)$ git reset master.txt //还原我们的暂存区
+/×实质上这里就是用当前的历史记录还原我们的暂存区×/
+重置后撤出暂存区的变更：
+M	master.txt
+ling:git_undo (master *)$ git diff --cached //看一下暂存区与历史记录差异
+ling:git_undo (master *)$ git status
+位于分支 master
+尚未暂存以备提交的变更：
+  （使用 "git add <文件>..." 更新要提交的内容）
+  （使用 "git checkout -- <文件>..." 丢弃工作区的改动）
+
+	修改：     master.txt
+
+修改尚未加入提交（使用 "git add" 和/或 "git commit -a"）
+
+？？能不能用别的历史提交的内容来还原我们的暂存区与工作区？
+ling:git_undo (master *)$ git checkout INITIAL_COMMIT -- master.txt
+ling:git_undo (master +)$ git status
+位于分支 master
+要提交的变更：
+  （使用 "git reset HEAD <文件>..." 撤出暂存区）
+
+	修改：     master.txt
+
+ling:git_undo (master +)$ git diff --cached
+diff --git a/master.txt b/master.txt
+index dc54100..c5e304a 100644
+--- a/master.txt
++++ b/master.txt
+@@ -1,3 +1 @@
+ Initial commit on master
+-Second commit on master
+-Initial commit on test_merge
+ling:git_undo (master +)$ git checkout HEAD -- master.txt 
+/*现在用最新的历史提交来还原我们的暂存区与工作区*/
+
+？？？现在想只用某一个历史提交来还原我们的暂存区而不是工作区？
+ling:git_undo (master)$ git reset INITIAL_COMMIT -- master.txt
+重置后撤出暂存区的变更：
+M	master.txt
+ling:git_undo (master *+)$ git status
+位于分支 master
+要提交的变更：
+  （使用 "git reset HEAD <文件>..." 撤出暂存区）
+
+	修改：     master.txt
+
+尚未暂存以备提交的变更：
+  （使用 "git add <文件>..." 更新要提交的内容）
+  （使用 "git checkout -- <文件>..." 丢弃工作区的改动）
+
+	修改：     master.txt
+
+ling:git_undo (master *+)$ git diff
+diff --git a/master.txt b/master.txt
+index c5e304a..dc54100 100644
+--- a/master.txt
++++ b/master.txt
+@@ -1 +1,3 @@
+ Initial commit on master
++Second commit on master
++Initial commit on test_merge
+ling:git_undo (master *+)$ git diff --cached
+diff --git a/master.txt b/master.txt
+index dc54100..c5e304a 100644
+--- a/master.txt
++++ b/master.txt
+@@ -1,3 +1 @@
+ Initial commit on master
+-Second commit on master
+-Initial commit on test_merge
+ling:git_undo (master *+)$ git reset master.txt /×恢复到最新提交×/
 
 
 
