@@ -761,6 +761,321 @@ index dc54100..c5e304a 100644
 -Initial commit on test_merge
 ling:git_undo (master *+)$ git reset master.txt /×恢复到最新提交×/
 
+/*
+	有时候我们并不想要编译工具给我们产生的一些中间文件
+	如test.o,test.a这些个文件我们是并不需要的
+*/
+e.g.
+	
+ling:git_undo (master)$ touch test.o test.a
+ling:git_undo (master)$ ls
+master.txt  test.a  test.o  test.txt
+
+ling:git_undo (master)$ git clean -n/×用它来看一下git clean将会帮我们移出掉那些内容×/
+将删除 test.a
+将删除 test.o
+ling:git_undo (master)$ git clean -f/×强制把这些个文件干掉×/
+正删除 test.a
+正删除 test.o
+
+/×
+	有时候我们项目中用.gitignore屏蔽了一些文件
+	这时候，如过我们用git clean会发生啥了？
+×/
+ling:git_undo (master)$ vim .gitignore
+ling:git_undo (master)$ git add .gitignore 
+ling:git_undo (master +)$ git commit -m "add ignore"
+[master 1561cea] add ignore
+ 1 file changed, 1 insertion(+)
+ create mode 100644 .gitignore
+ling:git_undo (master)$ touch test.o test.a
+ling:git_undo (master)$ touch test.c
+ling:git_undo (master)$ ls
+master.txt  test.a  test.c  test.o  test.txt
+ling:git_undo (master)$ git clean -n
+将删除 test.c
+----->>>
+	我们新创建了3个文件并且没有跟踪，，发现仅仅可以干掉test.c
+	git clean 默认并不清理.gitignore中的一些个文件
+
+---->>我们想要干掉工作区中没有被跟踪的文件 和 .gitignore中所忽略的文件
+先看一下
+ling:git_undo (master)$ git clean -n -x
+将删除 test.a
+将删除 test.c
+将删除 test.o
+再执行
+ling:git_undo (master)$ git clean -f -x
+正删除 test.a
+正删除 test.c
+正删除 test.o
+----->>我们只想干掉.gitignore中所忽略的文件
+先看一下
+ling:git_undo (master)$ touch test.c test.a test.o
+ling:git_undo (master)$ ls
+master.txt  test.a  test.c  test.o  test.txt
+ling:git_undo (master)$ git clean -n -X
+将删除 test.a
+将删除 test.o
+再执行
+ling:git_undo (master)$ git clean -f -X
+正删除 test.a
+正删除 test.o
+------------------------------------------
+
+如果说：我们有某个历史提交并不需要，我们可以产生一个新的提交来盖掉它？
+e.g.
+如刚提交.gitignore文件我们并不需要？
+可以~~
+ling:git_undo (master)$ git revert HEAD 
+[master 8580fb7] Revert "add ignore" //产生一个revert的提交
+ 1 file changed, 1 deletion(-)
+ delete mode 100644 .gitignore //删除了.gitignore文件
+
+此时工作区没有了.gitignore文件了
+ling:git_undo (master)$ ls -la
+总用量 16
+drwxrwxr-x 3 ling ling 4096  6月 15 22:55 .
+drwxrwxr-x 6 ling ling 4096  6月 13 23:15 ..
+drwxrwxr-x 8 ling ling 4096  6月 15 22:56 .git
+-rw-rw-r-- 1 ling ling   78  6月 13 23:55 master.txt
+-rw-rw-r-- 1 ling ling    0  6月 15 22:51 test.c
+-rw-rw-r-- 1 ling ling    0  6月 13 23:19 test.txt
+----------------------------------------------------------------
+/×
+	Review
+	
+	注意：git revert 6c39b2
+	意思是对6c39b2引入的改变取反应用到新的提交
+×/
+
+----------@@@@@@@@@@@@@@@@@@@-------------------
+重写历史记录
+1、git commit --amend //可以产生一个新的提交用来替换掉当前所指向的提交
+2、git rebase //有着超强的历史修改能力，这里是要让它帮我维护一个线性的历史
+3、git reset 
+/*
+	如当前产生了一个合并的提交
+	希望撤消掉这样一个提交
+	让我们历史看上去跟没有合并之前是一样的
+*/
+4、git reflog/×维护了HEAD引用的一些个历史信息×/
+/*通常配合git reset来使用*/
+
+-----------<>>>>首先还原回.gitignore文件
+ling:git_rewrite_history (master)$ git checkout HEAD~ -- .gitignore
+//将test.c添加进暂存区
+ling:git_rewrite_history (master +)$ git add test.c 
+//修改我们的提交
+ling:git_rewrite_history (master +)$ git commit --amend
+[master b62e40c] This is an amend commit
+ Date: Mon Jun 15 22:55:48 2015 +0800
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 test.c
+//这样我们原来的提交就被替换掉了
+ling:git_rewrite_history (master)$ git lol
+* b62e40c (HEAD -> master) This is an amend commit
+* 1561cea add ignore
+*   9ad3dbe Merge branch 'test'
+|\  
+| * 4cd6e16 (test) Initial commit on test
+* | fa41a94 (test_merge) Initial commit on test_merge
+|/  
+* b41e34e Second commit on master
+* 8f9ba6b (tag: v0, tag: INITIAL_COMMIT, fix_v0) Initial commit on master
+//---->>>可以清晰的看到原来的git revert 所产生的提交就不复存在了～～
+
+//---->>git rebase能够帮我们干啥～～？？
+
+step 1--->>
+修改一下master.txt加入到历史记录
+ling:git_rewrite_history (master)$ vim master.txt 
+ling:git_rewrite_history (master *)$ git add master.txt 
+ling:git_rewrite_history (master +)$ git commit -m "conflict rebase"
+[master 43ae7b6] conflict rebase
+ 1 file changed, 1 insertion(+)
+//基于本次提交之前的提交创建一个分支
+ling:git_rewrite_history (master)$ git checkout -b test_rebase HEAD~
+//修改一下添加的历史记录
+ling:git_rewrite_history (test_rebase)$ vim master.txt 
+ling:git_rewrite_history (test_rebase *)$ git add master.txt 
+ling:git_rewrite_history (test_rebase +)$ git commit -m "Initial commit on test_rebase"
+[test_rebase 74183d4] Initial commit on test_rebase
+ 1 file changed, 1 insertion(+)
+
+
+
+------------@@@@@@@@@@@@@@@@22
+ling:git_rewrite_history (test_rebase)$ git lol
+* 74183d4 (HEAD -> test_rebase) Initial commit on test_rebase
+| * 43ae7b6 (master) conflict rebase
+|/  
+* b62e40c This is an amend commit
+* 1561cea add ignore
+*   9ad3dbe Merge branch 'test'
+|\  
+| * 4cd6e16 (test) Initial commit on test
+* | fa41a94 (test_merge) Initial commit on test_merge
+|/  
+* b41e34e Second commit on master
+* 8f9ba6b (tag: v0, tag: INITIAL_COMMIT, fix_v0) Initial commit on master
+
+
+------------@@@@@@@@@@@@@@@@@@2222
+//怎样让test_rebase合并后的历史看上去它是线性的呢？
+ling:git_rewrite_history (test_rebase)$ git rebase master
+--->>冲突了～～
+放弃掉rebase
+ling:git_rewrite_history (test_rebase *+|REBASE 1/1)$ git rebase --abort 
+
+--->>想让rebase继续
+ling:git_rewrite_history (test_rebase)$ git rebase master 
+--->>修改我们冲突的文件
+ling:git_rewrite_history (test_rebase *+|REBASE 1/1)$ vim master.txt 
+//添加到暂存区
+ling:git_rewrite_history (test_rebase *+|REBASE 1/1)$ git add master.txt 
+//继续rebase
+ling:git_rewrite_history (test_rebase +|REBASE 1/1)$ git rebase --continue 
+正应用：Initial commit on test_rebase
+---@@@@@@@@@@@@@@@2
+* b9eb4e7 (HEAD -> test_rebase) Initial commit on test_rebase
+* 43ae7b6 (master) conflict rebase
+* b62e40c This is an amend commit
+* 1561cea add ignore
+*   9ad3dbe Merge branch 'test'
+|\  
+| * 4cd6e16 (test) Initial commit on test
+* | fa41a94 (test_merge) Initial commit on test_merge
+|/  
+* b41e34e Second commit on master
+* 8f9ba6b (tag: v0, tag: INITIAL_COMMIT, fix_v0) Initial commit on master
+---@@@@@@@@@@@@@@22
+------------->>>>>这样看起来就是一个线型的提交，而不是合并产生新的提交
+
+
+-------------->>>
+突然，现在这个rebase操作搞错了～～
+想回到之前的一个状态～～
+但是发现用git lol 找不到之前的那样一个历史了？
+------->>这时我们用git reflog
+ling:git_rewrite_history (test_rebase)$ git reflog
+b9eb4e7 HEAD@{0}: rebase finished: returning to refs/heads/test_rebase
+b9eb4e7 HEAD@{1}: rebase: Initial commit on test_rebase
+43ae7b6 HEAD@{2}: rebase: checkout master
+74183d4 HEAD@{3}: rebase: aborting
+43ae7b6 HEAD@{4}: rebase: checkout master
+74183d4 HEAD@{5}: commit: Initial commit on test_rebase
+…………………………
+------->>它维护HEAD引用的一个历史
+此时可以清晰的看到在test_rebase上最后的一个提交74183d4 HEAD@{5}
+此时我们执行一下
+ling:git_rewrite_history (test_rebase)$ git reset --hard HEAD@{5}
+HEAD 现在位于 74183d4 Initial commit on test_rebase
+ling:git_rewrite_history (test_rebase)$ git lol
+* 74183d4 (HEAD -> test_rebase) Initial commit on test_rebase
+| * 43ae7b6 (master) conflict rebase
+|/  
+* b62e40c This is an amend commit
+* 1561cea add ignore
+*   9ad3dbe Merge branch 'test'
+|\  
+| * 4cd6e16 (test) Initial commit on test
+* | fa41a94 (test_merge) Initial commit on test_merge
+|/  
+* b41e34e Second commit on master
+* 8f9ba6b (tag: v0, tag: INITIAL_COMMIT, fix_v0) Initial commit on master
+---->>发现历史和我们做rebase之前是一样的
+---->>实际上是把分支名和HEAD引用指向了
+* 74183d4 (HEAD -> test_rebase) Initial commit on test_rebase
+这个commit上去～～～
+----------@@@@@@@@@@@@@@@@@@@@@@@@@@@@@----------------
+
+git reset --hard HEAD@{5}
+
+--hard 这个参数是让我们的工作区和暂存区的内容都被这个历史记录给还原
+	然后把HEAD和分支的引用指向这个commit
+--mixed 这个参数是让我们的暂存区的内容都被这个历史记录给还原
+	然后把HEAD和分支的引用指向这个commit（这是默认效果）
+--soft 只把HEAD和分支的引用指向这个commit，不还原内容
+
+e.g--->>
+ling:git_rewrite_history (test_rebase)$ git reset --mixed HEAD~
+重置后撤出暂存区的变更：
+M	master.txt
+ling:git_rewrite_history (test_rebase *)$ git status
+位于分支 test_rebase
+尚未暂存以备提交的变更：
+  （使用 "git add <文件>..." 更新要提交的内容）
+  （使用 "git checkout -- <文件>..." 丢弃工作区的改动）
+
+	修改：     master.txt
+
+修改尚未加入提交（使用 "git add" 和/或 "git commit -a"）
+---->>>>>只显示了工作区与暂存区有区别
+---->>>>>也就是说它只是还原了我们的暂存区
+--->>看一下工作区与暂层区的区别
+ling:git_rewrite_history (test_rebase *)$ git diff
+diff --git a/master.txt b/master.txt
+index dc54100..93a9ae1 100644
+--- a/master.txt
++++ b/master.txt
+@@ -1,3 +1,4 @@
+ Initial commit on master
+ Second commit on master
+ Initial commit on test_merge
++Initial commit on test_rebase
+
+
+
+/×输出近十条的HEAD引用×/
+ling:git_rewrite_history (test_rebase *)$ git reflog -10
+b62e40c HEAD@{0}: reset: moving to HEAD~
+74183d4 HEAD@{1}: reset: moving to HEAD@{5}
+b9eb4e7 HEAD@{2}: rebase finished: returning to refs/heads/test_rebase
+b9eb4e7 HEAD@{3}: rebase: Initial commit on test_rebase
+43ae7b6 HEAD@{4}: rebase: checkout master
+74183d4 HEAD@{5}: rebase: aborting
+43ae7b6 HEAD@{6}: rebase: checkout master
+74183d4 HEAD@{7}: commit: Initial commit on test_rebase
+b62e40c HEAD@{8}: checkout: moving from master to test_rebase
+43ae7b6 HEAD@{9}: commit: conflict rebase
+
+/*OK,撤消刚刚的这么一个操作*/
+ling:git_rewrite_history (test_rebase *)$ git reset --hard HEAD@{5}
+HEAD 现在位于 74183d4 Initial commit on test_rebase
+
+
+/×现在试一下--soft×/
+ling:git_rewrite_history (test_rebase)$ git reset --soft HEAD~
+ling:git_rewrite_history (test_rebase +)$ git status
+位于分支 test_rebase
+要提交的变更：
+  （使用 "git reset HEAD <文件>..." 撤出暂存区）
+
+	修改：     master.txt
+
+ling:git_rewrite_history (test_rebase +)$ git diff --cached
+diff --git a/master.txt b/master.txt
+index dc54100..93a9ae1 100644
+--- a/master.txt
++++ b/master.txt
+@@ -1,3 +1,4 @@
+ Initial commit on master
+ Second commit on master
+ Initial commit on test_merge
++Initial commit on test_rebase
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
