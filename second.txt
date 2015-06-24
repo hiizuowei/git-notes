@@ -1,0 +1,378 @@
+
+--------->>Git的远程协作---------------
+GitHup简介
+Git运程协作的主要命令
+GitHup Pull Request的流程
+
+
+------------@@@@@@@@@@@@-------------
+
+Unwatch表示我们要接受一个项目的通知
+
+Star 表示我们持续关注某一个项目
+
+Fork 表示把别人的一个项目克隆到自己用户名下，和Pull request组成开源项目的一个流程
+
+----->>SSH keys的生成
+https://help.github.com/articles/generating-ssh-keys/
+
+ling:~$ ssh-keygen -t rsa -C "hiizuowei@gmail.com"
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/ling/.ssh/id_rsa): -->>@@保存文件到那个目录
+Created directory '/home/ling/.ssh'.
+Enter passphrase (empty for no passphrase): -->>键入自己的ssh密码(123456)
+Enter same passphrase again: 
+Your identification has been saved in /home/ling/.ssh/id_rsa.
+Your public key has been saved in /home/ling/.ssh/id_rsa.pub.
+The key fingerprint is:
+48:00:4c:5b:b7:e8:ff:e3:fa:19:ac:4e:ea:4f:da:bb hiizuowei@gmail.com
+The key's randomart image is:
++---[RSA 2048]----+
+| oo.o .          |
+|  .o + .         |
+|  . . o          |
+|   . . .         |
+|    . . S        |
+|     . .         |
+|      + o        |
+|     * o.o       |
+|   .+oE*=.       |
++-----------------+
+
+
+//为了不用每次都输入ssh的密码
+//我们使用ssh-agent来保存密码
+ling:~$ eval "$(ssh-agent -s)"
+Agent pid 26740
+ling:~$ ssh-add ~/.ssh/id_rsa
+Enter passphrase for /home/ling/.ssh/id_rsa: 
+Identity added: /home/ling/.ssh/id_rsa (/home/ling/.ssh/id_rsa)
+ling:~$ xclip -sel clip < ~/.ssh/id_rsa.pub
+//验证一下有没有用
+ling:~$ ssh -T git@github.com
+The authenticity of host 'github.com (192.30.252.131)' can't be established.
+RSA key fingerprint is 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added 'github.com,192.30.252.131' (RSA) to the list of known hosts.
+Hi hiizuowei! You've successfully authenticated, but GitHub does not provide shell access.
+//---------------------------------------------------------------
+
+Git运程写作的主要命令
+1.git clone --->>用来获取远程仓库
+2.git fetch --->>用来获取远程仓库以及数据
+3.git full --->>其实是get fetch与git merge的组合操作
+4.git push ---->>用来把本地的数据推送到远程仓库中去
+
+
+git clone所支持的协议
+ssh://
+git://
+http[s]://
+ftp[s]://
+rsync://
+
+--------Examples----@@@@@@@@@@@@@@@@@@@@@@------------------
+//克隆一下仓库
+ling:git$ git clone https://github.com/hiizuowei/test.git
+正克隆到 'test'...
+remote: Counting objects: 8, done.
+remote: Compressing objects: 100% (6/6), done.
+remote: Total 8 (delta 1), reused 0 (delta 0), pack-reused 0
+展开对象中: 100% (8/8), 完成.
+检查连接... 完成。
+
+//获取一下远程仓库中最新的一些数据
+ling:test (master)$ git fetch
+remote: Counting objects: 3, done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
+展开对象中: 100% (3/3), 完成.
+来自 https://github.com/hiizuowei/test
+   67d1897..72584b6  master     -> origin/master
+ling:test (master)$ 
+
+/×
+	看一下我们的历史
+×/
+
+ling:test (master)$ git log --oneline --decorate --graph --all
+* 72584b6 (origin/master, origin/HEAD) Create test.txt
+* 67d1897 (HEAD -> master) Update README.md
+* ca88107 Initial commit
+/×
+	发现我们的HAED和master引用并没有指向我们的最新的提交
+×/
+
+--->>OK,我们需要合并分支
+ling:test (master)$ git merge origin/master 
+更新 67d1897..72584b6
+Fast-forward
+ test.txt | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 test.txt
+/×
+	让我们本地的HEAD和master引用指向最新的一个提交
+×/
+
+--->>在本地增加一些数据，然后添加到历史中去
+ling:test (master)$ vim test.txt 
+ling:test (master *)$ git add test.txt 
+ling:test (master +)$ git commit -m "add some local texts in test.txt"
+[master e7cdfc8] add some local texts in test.txt
+ 1 file changed, 1 insertion(+)
+ling:test (master)$ 
+--->>就在与此同时，有人再服务器上推送了更新
+--->>这个时候，我们把本地数据推送到服务器上
+--->>发现服务器拒绝了我们的推送
+To https://github.com/hiizuowei/test.git
+ ! [rejected]        master -> master (fetch first)
+error: 无法推送一些引用到 'https://github.com/hiizuowei/test.git'
+提示：更新被拒绝，因为远程版本库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个版本库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+
+/×
+	原因是我们本地没有服务器上的一些记录
+	如过推送的话，会覆盖服务器的一些记录
+	他提示我们用git pull 拉取数据到本地并且合并
+×/
+ling:test (master)$ git pull
+remote: Counting objects: 3, done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
+展开对象中: 100% (3/3), 完成.
+来自 https://github.com/hiizuowei/test
+   72584b6..7cba1e4  master     -> origin/master
+自动合并 test.txt
+冲突（内容）：合并冲突于 test.txt
+自动合并失败，修正冲突然后提交修正的结果。
+
+/×
+	因为我们在本地修改的内容和服务器上修改的内容在同一个地方
+	所以冲突了。。。。
+	因此我们需要解决这个conflicts
+×/
+--->>OK，编辑冲突的文件并保存起来～～
+>>>>>>然后做一个新的提交
+ling:test (master *+|MERGING)$ vim test.txt 
+ling:test (master *+|MERGING)$ git add test.txt 
+ling:test (master +|MERGING)$ git commit 
+[master c2d2362] Merge branch 'master' of https://github.com/hiizuowei/test
+/×
+--->>再一次推送
+×/
+ling:test (master)$ git push
+对象计数中: 6, 完成.
+Delta compression using up to 4 threads.
+压缩对象中: 100% (5/5), 完成.
+写入对象中: 100% (6/6), 597 bytes | 0 bytes/s, 完成.
+Total 6 (delta 2), reused 0 (delta 0)
+To https://github.com/hiizuowei/test.git
+   7cba1e4..c2d2362  master -> master
+
+--------------->>>这样就不会有啥子问题
+
+--->>as you know --->>带注解的tag可以用于项目的分享
+
+--->>创建一个带注解的tag v0
+ling:test (master)$ git tag -a v0 -m"tag for v0"
+ling:test (master)$ git push
+Everything up-to-date
+/*用git push的时候默认是不把tag推送到远程仓库中的*/
+--->>要用
+ling:test (master)$ git push --tags
+Username for 'https://github.com': hiizuowei
+Password for 'https://hiizuowei@github.com': 
+对象计数中: 1, 完成.
+写入对象中: 100% (1/1), 155 bytes | 0 bytes/s, 完成.
+Total 1 (delta 0), reused 0 (delta 0)
+To https://github.com/hiizuowei/test.git
+ * [new tag]         v0 -> v0
+/×此时才推送过去～～×/
+
+
+/×
+在远程分支上创建一个feature分支
+×/
+/×
+然后在本地git pull 一下，得到服务器上最新的各分支上的数据
+×/
+ling:test (master)$ git pull
+来自 https://github.com/hiizuowei/test
+ * [新分支]          feature    -> origin/feature
+Already up-to-date.
+/×
+我们也可以在本地只更新某一个分支上的数据
+×/
+ling:test (master)$ git pull origin feature 
+来自 https://github.com/hiizuowei/test
+ * branch            feature    -> FETCH_HEAD
+Already up-to-date.
+/×
+因为刚刚已经更新过了
+所以并没有一个merge操作
+只执行了一个fetch的操作
+把这个分支的内容记录到一个FETCH_HEAD的文件中去
+×/
+当然git feature同样可以做这么一个操作
+只不过当服务器有更新的时候，
+我们需要手动在本地做一下merge操作
+ling:test (master)$ git fetch origin feature
+来自 https://github.com/hiizuowei/test
+ * branch            feature    -> FETCH_HEAD
+/×
+OK和刚才的操作是一样的
+×/
+
+/*
+可以更新指定的数据
+那么当然就可以只推送指定的数据
+*/
+--->>OK,添加一些数据，然后做一个commit
+ling:test (master)$ vim test.txt 
+ling:test (master *)$ git add test.txt 
+ling:test (master +)$ git commit -m "add some texts on master"
+[master 0568d22] add some texts on master
+ 1 file changed, 1 insertion(+)
+--->>做一个操作，在v0 tag 上把master分支上的内容推送到远程服务器上
+ling:test (master)$ git checkout v0
+Note: checking out 'v0'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by performing another checkout.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -b with the checkout command again. Example:
+
+  git checkout -b <new-branch-name>
+
+HEAD 目前位于 c2d2362... Merge branch 'master' of https://github.com/hiizuowei/test
+ling:test ((v0))$ git push origin master 
+Username for 'https://github.com': hiizuowei
+Password for 'https://hiizuowei@github.com': 
+对象计数中: 3, 完成.
+Delta compression using up to 4 threads.
+压缩对象中: 100% (3/3), 完成.
+写入对象中: 100% (3/3), 304 bytes | 0 bytes/s, 完成.
+Total 3 (delta 1), reused 0 (delta 0)
+To https://github.com/hiizuowei/test.git
+   c2d2362..0568d22  master -> master
+ling:test ((v0))$ 
+--->>再做一个操作
+/×
+	我们知道本地的feature分支跟服务器上的feature分支有一个对应的关系
+	我们想把本地的feature分支删掉后，再把服务器上的那个分支也干掉的话
+	？？??
+	该如何做？
+	如何干掉远程分支？
+×/
+
+首先做一下
+ling:test (master)$ git checkout feature 
+分支 feature 设置为跟踪来自 origin 的远程分支 feature。
+切换到一个新分支 'feature'
+ling:test (feature)$ git checkout master 
+切换到分支 'master'
+您的分支与上游分支 'origin/master' 一致。
+
+ling:test (master)$ git branch -d feature //本地干掉这个分支
+已删除分支 feature（曾为 c2d2362）。
+---但是服务器上的还在，如何做？
+ling:test (master)$ git push --delete origin feature
+To https://github.com/hiizuowei/test.git
+ - [deleted]         feature
+
+
+-->>还有一种方法可干掉远程分支
+就是推送一个空的分支到远程服务器上的feature分支
+ling:test (master)$ git push origin :feature
+To https://github.com/hiizuowei/test.git
+ - [deleted]         feature
+
+==================================================
+GitHup Pull Request流程
+1.如何在GitHup上fork项目
+2.如何用git remote 获取已fork项目的更新
+3.走一遍Pull Request的流程
+
+--------------------》》》
+在做Pull Request 的时候我们会新建一个功能分支来承载我们的修改～～
+如在我们forked的项目中
+ling:test (master)$ git checkout -b feature
+切换到一个新分支 'feature'
+————修改项目并添加到历史中去
+ling:test (feature)$ vim test.txt 
+ling:test (feature *)$ git add test.txt 
+ling:test (feature +)$ git commt -m "add some feature texts"
+[feature e52d24f] add some feature texts
+ 1 file changed, 1 insertion(+)
+ ————把feature分支推送到我们的远程仓库中
+ ling:test (feature)$ git push origin feature 
+————来到githup创建一个Pull Request
+
+/*
+	我们要在本地获取远程仓库中已fork项目的最新代码
+*/
+——————————————
+因此我们要添加一个上游仓库的地址
+ling:test (master)$ git remote add upstream https://github.com/hiizuowei/test.git
+ling:test (master)$ git remote -v
+origin	https://github.com/ziizuowei/test.git (fetch)
+origin	https://github.com/ziizuowei/test.git (push)
+upstream	https://github.com/hiizuowei/test.git (fetch)
+upstream	https://github.com/hiizuowei/test.git (push)
+
+//实际上origin,upstream就代表远程仓库的路径～～
+
+//现在我们就可获取仓库中的最新代码了～～
+ling:test (master)$ git fetch upstream 
+remote: Counting objects: 4, done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 4 (delta 2), reused 4 (delta 2), pack-reused 0
+展开对象中: 100% (4/4), 完成.
+来自 https://github.com/hiizuowei/test
+ * [新分支]          master     -> upstream/master
+ling:test (master)$ git merge upstream/master 
+Merge made by the 'recursive' strategy.
+ test.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+ling:test (master)$ 
+
+
+//重命名远程仓库地址的别名
+ling:test (master)$ git remote 
+origin
+upstream
+ling:test (master)$ git remote rename upstream daydayup
+ling:test (master)$ git remote
+daydayup
+origin
+
+//删掉远程仓库地址
+ling:test (master)$ git remote rm daydayup
+ling:test (master)$ git remote 
+origin
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
