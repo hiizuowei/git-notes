@@ -1,0 +1,363 @@
+@～@深入理解Git远程操作
+
+·跟踪分支与远程跟踪分支
+·远程操作中的[remote]配置
+·远程操作中的[branch]配置
+
+
+
+Step 1
+	 跟踪分支与远程跟踪分支
+
+当进行Git远程操作的时候，有两个概念需要掌握：
+·跟踪分支（tracking branch）
+·远程跟踪分支（remote tracking branch）
+
+在Git本地操作的课程中，我们提到过分支只是指向某个commit对象的引用，那么
+跟踪分支和远程跟踪分支在本地仓库中具体指向什么呢？
+
+当我们
+git   clone  https://yourrepohost/project.git 
+会在我们的本地仓库中生成
+	origin/master----------------→远程跟踪分支（用户只读）
+	master ----------------→跟踪分支（用户可写）
+
+
+①→origin/master的指向是在git push命令执行后改变的
+看操作
+→
+lling:hiizuowei$ git clone https://github.com/hiizuowei/ugr.git git_remote❤→克隆一个项目
+正克隆到 'git_remote'...
+remote: Counting objects: 6, done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 6 (delta 0), reused 0 (delta 0), pack-reused 0
+展开对象中: 100% (6/6), 完成.
+检查连接... 完成。
+ling:hiizuowei$ cd git_remote/
+ling:git_remote (master)$ git log --oneline --decorate --graph --all❤→查看提交历史
+* b633113 (HEAD -> master, origin/master, origin/HEAD) Create remote.txt
+* 8ec399e Initial commit→→发现只有两个commit
+ling:git_remote (master)$ vim remote.txt ❤→OK,在本地修改一下文件，然后做一个commit
+ling:git_remote (master *)$ git add .
+ling:git_remote (master +)$ git commit -m"third commit"
+[master 1505af1] third commit
+ 1 file changed, 1 insertion(+)
+ling:git_remote (master)$ git log --oneline --decorate --graph --all
+* 1505af1 (HEAD -> master) third commit❤→发现我们的master比origin/master前进了一个提交
+* b633113 (origin/master, origin/HEAD) Create remote.txt❤→
+* 8ec399e Initial commit
+
+ling:git_remote (master)$ git push origin master ❤→把我们的master分支推送到远程仓库中去
+Username for 'https://github.com': hiizuowei
+Password for 'https://hiizuowei@github.com': 
+对象计数中: 3, 完成.
+Delta compression using up to 4 threads.
+压缩对象中: 100% (2/2), 完成.
+写入对象中: 100% (3/3), 293 bytes | 0 bytes/s, 完成.
+Total 3 (delta 0), reused 0 (delta 0)
+To https://github.com/hiizuowei/ugr.git
+   b633113..1505af1  master -> master
+ling:git_remote (master)$ git log --oneline --decorate --graph --all
+* 1505af1 (HEAD -> master, origin/master, origin/HEAD) third commit❤→发现已经和master同步了～～
+* b633113 Create remote.txt
+* 8ec399e Initial commit
+
+OK,我们试图切换到origin/master分支，会发现我们处于'detached HEAD' state
+❤→origin/master是由远程交互来变更和维护的
+也就是说我们的HEAD引用不能指向到origin/master
+
+ling:git_remote (master)$ git checkout origin/master 
+Note: checking out 'origin/master'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by performing another checkout.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -b with the checkout command again. Example:
+
+  git checkout -b <new-branch-name>
+
+HEAD 目前位于 1505af1... third commit
+
+☺→通过git fetch 来获取远程仓库中最新的一些内容
+ling:git_remote (master)$ git fetch origin 
+remote: Counting objects: 3, done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0
+展开对象中: 100% (3/3), 完成.
+来自 https://github.com/hiizuowei/ugr
+   1505af1..014346d  master     -> origin/master
+☺→我们发现远程仓库中的master分支上的内容已经到我们本地远程跟踪分支origin/master上了
+
+OK,现在我们需要把origin/master上的内容合并到我们本地的master上
+ling:git_remote (master)$ git merge origin/master 
+更新 1505af1..014346d
+Fast-forward
+ remote.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+☺→当然也可以用箭头——→git pull来操作，它是git fetch[+git merge | +git  rebase],但不建议
+
+❤→因为在我们在git fetch之后可以看到【跟踪分支】与【远程跟踪分支】的差异
+
+OK-->>现在我们返回上一个commit
+ling:git_remote (master)$ git reset --hard HEAD ~
+
+OK-->>现在就可以对比它们之间的差异
+ling:git_remote (master)$ git diff master origin/master 
+diff --git a/remote.txt b/remote.txt
+index 3280cc4..a020d39 100644
+--- a/remote.txt
++++ b/remote.txt
+@@ -1,2 +1,3 @@
+ second commit
+ third commit
++fourth commit
+--------------------------------------->>看到这个差异后，再来决定是merge还是rebase操作
+
+=======================================================================
+=======================================================================
+Step 2
+	远程操作中的remote配置
+→首先我们来看一下本地仓库的一些配置
+ling:git_remote (master)$ git config --list --local 
+core.repositoryformatversion=0
+core.filemode=true
+core.bare=false
+core.logallrefupdates=true
+remote.origin.url=https://github.com/hiizuowei/ugr.git
+remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
+branch.master.remote=origin
+branch.master.merge=refs/heads/master
+
+※→
+	注意这个remote.origin.url与remote.origin.fetch
+	这个就是git怎么样来定义远程跟踪分支的
+※
+
+❤→我们本地仓库的一个配置，也可以通过.git/config文件来查看
+※当然我们可以修改这个文件来做一些配置，但并不建议～
+
+※【remote】配置中的要掌握的几个知识点
+①url
+②fetch
+③push
+④refspec
+
+看一下刚才的一个配置
+[remote "origin"]❤→origin对应url
+        url = https://github.com/hiizuowei/ugr.git
+        fetch = +refs/heads/*:refs/remotes/origin/*
+        	     |_________________________________________|
+        	     		refspec
+/※
+	这个remote的名子就是origin，那么它对应的就是url这个配置
+	也就是说我们给这个远程仓库的地址弄了一个别名
+
+	所在使用命令的时候就可以用这个origin来代替这个url
+	就是先前我们使用
+	git  fetch  origin
+	git  push  origin
+	这个origin所代表的意思
+	——————————————————————————
+	这个fetch就是告诉git如何来配置我们的远程跟踪分支
+	它的这个格式，我们叫做refspec
+	也就是怎么样指定我们引用定义的一个方式
+
+	refspec的格式：[+]src:dest
+	用了一个可选的加号打头
+	src→refs/heads/*——→表示远程仓库当中refs/heads/文件夹底下的所有分支
+	dest→refs/remotes/origin/*→就是我们定义的远程跟踪分支的信息
+※/	
+※：.git目录是git 工作目录
+看一下本地的.git/refs/目录中的文件
+ling:git_remote (master)$ ls .git/refs/
+heads  remotes  tags
+
+heads →放我们本地的分支
+remotes→放我们远程跟踪分支
+tags→放我们本地的一些tag标签
+
+ling:git_remote (master)$ ls .git/refs/heads/
+master
+ling:git_remote (master)$ cat .git/refs/heads/master 
+1505af1ae4dda917e49373aa5089087b0a60fafa※→代表当前master分支所指向的commit对象
+
+同样来看一下
+ling:git_remote (master)$ ls .git/refs/remotes/origin/
+HEAD  master
+ling:git_remote (master)$ cat .git/refs/remotes/origin/master 
+014346d62b28e6367519994c4019cdd18a6c58dc
+
+(ˇˍˇ） 想～)看一下历史对比一下
+ling:git_remote (master)$ git log --oneline --decorate --graph --all
+* 014346d (origin/master, origin/HEAD) Update remote.txt❤→发现和上面看到是一样的
+* 1505af1 (HEAD -> master) third commit❤→发现和上面看到是一样的
+* b633113 Create remote.txt
+* 8ec399e Initial commit
+
+※
+	①＋：前面的加号代表强制non-fast-forward的fetch操作（也就是历史不是线性的）
+
+远程仓库 				本地仓库
+refs/heads/master 		 refs/remotes/origin/master 本地与远程仓库对应的远程跟踪分支origin/master
+
+refs/heads/dv			refs/remotes/origin/dev →→origin/dev
+
+
+
+※强制把本地的master分支提交远程仓库中去
+ling:git_remote1 (master)$ git push origin +master 
+这样会把远程仓库中的历史给替换掉————》》非常的危险
+
+①git fetch的时候一般来说带加号
+②git push的时候一般来说不带加号
+③不要变更远程仓库中的历史记录
+
+————————————————————————
+团队中有：开发团队
+	      测试团队
+	      持续集成团队
+
+在这个时候，开发人员仅仅需要开发团队的分支
+此时在我们的refspec就可加入namespace来区分
+
+[remote "origin"]
+	url = https://github.com/hiizuowei/ugr.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+	fetch = +refs/heads/qa/*:refs/remotes/origin/qa/*
+
+那么这个命名空间是如何创建出来的呢？
+这个并不是由git checkout qa/master 来创建出来的，
+而是由 第一次git push创建出来的
+
+如下，这是一个QA团队的remote's push配置
+	push  =  refs/heads/*:refs/heads/qa/*
+
+①前面对应的是我们本地仓库的信息
+②冒号后面表明我们要推送到的远程仓库的qa命名间下面
+
+那么就是我本地有一个master分支，那么推送到远程仓库中就有一个
+qa/master分支
+
+※
+	首先为我们origin的remote配置增加一条配置
+	ling:git_remote (master)$ git remote set-branches --add origin qa/*
+
+	此时在配置里面就会多一行
+	fetch = +refs/heads/qa/*:refs/remotes/origin/qa/*
+
+	当然这也需要qa团队的成员能够正确配置自己的push's refspec：
+	push  =  refs/heads/*:refs/heads/qa/*
+
+
+
+ling:git_remote1 (master)$ git push origin master:qa/master❤
+Username for 'https://github.com': hiizuowei
+Password for 'https://hiizuowei@github.com': 
+Total 0 (delta 0), reused 0 (delta 0)
+To https://github.com/hiizuowei/ugr.git
+ * [new branch]      master -> qa/master
+
+ (ˇˍˇ） 想～)→不想每次命令都输入后面的refspec？
+
+
+ 当然也可有多个远程remote配置
+ ①添加一个
+ling:git_remote1 (master)$ git remote add fork https://github.com/hiizuowei/ugr.git
+②重命名
+ling:git_remote1 (master)$ git remote rename fork forked
+
+ling:git_remote1 (master)$ git fetch forked 
+来自 https://github.com/hiizuowei/ugr
+ * [新分支]          master     -> forked/master
+
+====================================================================
+====================================================================
+远程操作中的[branch]配置
+
+本课时包含以下几个知识点：
+①[branch]配置的作用
+②如何配置[branch]
+
+※在本地创建了一个分支，然后push到远程仓库当中去
+要注意设置当前的分支的tracking information
+
+ling:git_remote (master)$ git checkout -b v0
+切换到一个新分支 'v0'
+ling:git_remote (v0)$ git push origin v0
+
+
+ling:git_remote (v0)$ git pull
+There is no tracking information for the current branch.
+Please specify which branch you want to merge with.
+See git-pull(1) for details
+
+    git pull <remote> <branch>
+
+If you wish to set tracking information for this branch you can do so with:
+
+    git branch --set-upstream-to=origin/<branch> v0→❤
+
+ling:git_remote (v0)$ git branch --set-upstream-to=origin/v0 v0 →❤注意要如此做~
+
+※看一下具体的配置
+
+[branch "master"]
+	remote = origin※指明了使用[remote "origin"]这么一个远程仓库	
+	merge = refs/heads/master※指明了远程仓库中的这么一个master分支
+[branch "v0"]
+	remote = origin	
+	merge = refs/heads/v0
+
+
+※设置本地分支的跟踪信息
+	git branch [--track|--set-upstream] 
+
+
+git  branch  --track  v1  origin/v0
+		   跟踪分支   跟踪分支的信息来源
+
+※它指的是我们新建了一个跟踪分支v1,它跟踪的是远程仓库中的v0分支
+
+※本地创建了一个新分支,
+   第一次推送分支到远程仓库中去的时候需要加-u参数
+   此时git会帮我们自动设置当前新分支的对于远程仓库中对应分支的跟踪信息
+
+ling:git_remote (v2)$ git push -u origin v2
+Username for 'https://github.com': hiizuowei
+Password for 'https://hiizuowei@github.com': 
+分支 v2 设置为跟踪来自 origin 的远程分支 v2。
+Everything up-to-date
+
+※-u只需第一次加
+
+设置跟踪分支信息的其它方法
+ling:git_remote (v3)$ git config branch.v4.remote origin
+ling:git_remote (v3)$ git config branch.v4.merge refs/heads/master
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
